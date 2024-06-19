@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+    <title>Geolocation</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.8.0/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.css" />
+
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+        }
+    </style>
+
+</head>
+
+<body>
+    <div id="map" style="width:100%; height: 100vh"></div>
+    <script src="https://unpkg.com/leaflet@1.8.0/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-routing-machine@latest/dist/leaflet-routing-machine.js"></script>
+    <script src="https://unpkg.com/axios/dist/axios.min.js"></script> <!-- Include Axios library for AJAX requests -->
+
+    <script>
+        var map = L.map('map').setView([28.2380, 83.9956], 11);
+        mapLink = "<a href='http://openstreetmap.org'>OpenStreetMap</a>";
+        L.tileLayer('http://{s}.tile.osm.org/{z}/{x}/{y}.png', {
+            attribution: 'Leaflet &copy; ' + mapLink + ', contribution',
+            maxZoom: 18
+        }).addTo(map);
+
+        var taxiIcon = L.icon({
+            iconUrl: 'assets/taxi.png',
+            iconSize: [40, 40]
+        })
+
+        var marker = L.marker([28.2380, 83.9956], {
+            icon: taxiIcon
+        }).addTo(map);
+
+        // Fetch coordinates from latlng.txt and integrate with map
+        axios.get('latlng.txt') // Assuming latlng.txt contains coordinates in the format: "lat:18.32332 long:73.32324 lat:18.33332 long:73.34324"
+            .then(function(response) {
+                var coordinates = response.data.trim().split(/\s+/).filter(coord => coord.trim() !== "").map(coord => parseFloat(coord.split(":")[1]));
+                var sourceLat = coordinates[0];
+                var sourceLng = coordinates[1];
+                var destLat = coordinates[2];
+                var destLng = coordinates[3];
+
+                var sourceMarker = L.marker([sourceLat, sourceLng]).addTo(map);
+                var destMarker = L.marker([destLat, destLng]).addTo(map);
+
+                L.Routing.control({
+                    waypoints: [
+                        L.latLng(sourceLat, sourceLng),
+                        L.latLng(destLat, destLng)
+                    ]
+                }).on('routesfound', function(e) {
+                    var routes = e.routes;
+                    console.log(routes);
+
+                    e.routes[0].coordinates.forEach(function(coord, index) {
+                        setTimeout(function() {
+                            marker.setLatLng([coord.lat, coord.lng]);
+                        }, 100 * index)
+                    })
+                }).addTo(map);
+            })
+            .catch(function(error) {
+                console.error('Error reading file:', error);
+            });
+    </script>
+</body>
+
+</html>
